@@ -154,8 +154,8 @@ def santiag(c, strh=1, strv=1, type='nnedi3', nsize=None, nns=None, qual=None, p
         else:
             nnedi3 = partial(core.znedi3.nnedi3 if hasattr(core, 'znedi3') else core.nnedi3.nnedi3,
                              nsize=nsize, nns=nns, qual=qual, pscrn=pscrn, int16_prescreener=int16_prescreener, int16_predictor=int16_predictor, exp=exp)
-            eedi3 = partial(core.eedi3m.EEDI3 if hasattr(core, 'eedi3m') else core.eedi3.eedi3,
-                            alpha=alpha, beta=beta, gamma=gamma, nrad=nrad, mdis=mdis, vcheck=vcheck)
+            eedi3 = lambda *args, **kwargs: partial(core.eedi3m.EEDI3 if hasattr(core, 'eedi3m') else core.eedi3.eedi3,
+                            alpha=alpha, beta=beta, gamma=gamma, nrad=nrad, mdis=mdis, vcheck=vcheck)(*args, **kwargs)
 
         strength = max(strength, 0)
         field = strength % 2
@@ -1209,8 +1209,8 @@ def QTGMC(Input, Preset='Slower', TR0=None, TR1=None, TR2=None, Rep0=None, Rep1=
 
     # Calculate forward and backward motion vectors from motion search clip
     if maxTR > 0:
-        analyse_args = dict(blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, pelsearch=PelSearch, truemotion=TrueMotion, _lambda=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel,
-                            _global=GlobalMotion, dct=DCT, chroma=ChromaMotion)
+        analyse_args = dict(blksize=BlockSize, overlap=Overlap, search=Search, searchparam=SearchParam, pelsearch=PelSearch, truemotion=TrueMotion, lambda_=Lambda, lsad=LSAD, pnew=PNew, plevel=PLevel,
+                            global_=GlobalMotion, dct=DCT, chroma=ChromaMotion)
         srchSuper = DitherLumaRebuild(srchClip, s0=1, chroma=ChromaMotion).mv.Super(pel=SubPel, sharp=SubPelInterp, hpad=hpad, vpad=vpad, chroma=ChromaMotion)
         bVec1 = srchSuper.mv.Analyse(isb=True, delta=1, **analyse_args)
         fVec1 = srchSuper.mv.Analyse(isb=False, delta=1, **analyse_args)
@@ -1511,7 +1511,7 @@ def QTGMC(Input, Preset='Slower', TR0=None, TR1=None, TR2=None, Rep0=None, Rep1=
     rBlockDivide = BlockSize // rBlockSize
     rLambda = Lambda // (rBlockDivide * rBlockDivide)
     if ShutterBlur > 1:
-        recalculate_args = dict(thsad=ThSAD1, blksize=rBlockSize, overlap=rOverlap, search=Search, searchparam=SearchParam, truemotion=TrueMotion, _lambda=rLambda, pnew=PNew, dct=DCT,
+        recalculate_args = dict(thsad=ThSAD1, blksize=rBlockSize, overlap=rOverlap, search=Search, searchparam=SearchParam, truemotion=TrueMotion, lambda_=rLambda, pnew=PNew, dct=DCT,
                                 chroma=ChromaMotion)
         sbBVec1 = core.mv.Recalculate(srchSuper, bVec1, **recalculate_args)
         sbFVec1 = core.mv.Recalculate(srchSuper, fVec1, **recalculate_args)
@@ -1580,8 +1580,8 @@ def QTGMC_Interpolate(Input, InputType, EdiMode, NNSize, NNeurons, EdiQual, EdiM
     else:
         nnedi3 = partial(core.znedi3.nnedi3 if hasattr(core, 'znedi3') else core.nnedi3.nnedi3,
                          nsize=NNSize, nns=NNeurons, qual=EdiQual, pscrn=pscrn, int16_prescreener=int16_prescreener, int16_predictor=int16_predictor, exp=exp)
-        eedi3 = partial(core.eedi3m.EEDI3 if hasattr(core, 'eedi3m') else core.eedi3.eedi3,
-                        alpha=alpha, beta=beta, gamma=gamma, nrad=nrad, mdis=EdiMaxD, vcheck=vcheck)
+        eedi3 = lambda *args, **kwargs: partial(core.eedi3m.EEDI3 if hasattr(core, 'eedi3m') else core.eedi3.eedi3,
+                        alpha=alpha, beta=beta, gamma=gamma, nrad=nrad, mdis=EdiMaxD, vcheck=vcheck)(*args, **kwargs)
 
     isGray = (Input.format.color_family == vs.GRAY)
     if isGray:
@@ -2540,7 +2540,7 @@ def LUTDeCrawl(input, ythresh=10, cthresh=10, maxdiff=50, scnchg=25, usemaxdiff=
         else:
             return clips[1]
 
-    if not isinstance(input, vs.VideoNode) or input.format.color_family not in [vs.YUV, vs.YCOCG] or input.format.bits_per_sample > 10:
+    if not isinstance(input, vs.VideoNode) or input.format.color_family not in [vs.YUV] or input.format.bits_per_sample > 10:
         raise vs.Error('LUTDeCrawl: This is not an 8-10 bit YUV or YCoCg clip')
 
     shift = input.format.bits_per_sample - 8
@@ -2632,7 +2632,7 @@ def LUTDeCrawl(input, ythresh=10, cthresh=10, maxdiff=50, scnchg=25, usemaxdiff=
 #
 ###################
 def LUTDeRainbow(input, cthresh=10, ythresh=10, y=True, linkUV=True, mask=False):
-    if not isinstance(input, vs.VideoNode) or input.format.color_family not in [vs.YUV, vs.YCOCG] or input.format.bits_per_sample > 10:
+    if not isinstance(input, vs.VideoNode) or input.format.color_family not in [vs.YUV] or input.format.bits_per_sample > 10:
         raise vs.Error('LUTDeRainbow: This is not an 8-10 bit YUV or YCoCg clip')
 
     shift = input.format.bits_per_sample - 8
@@ -2772,7 +2772,7 @@ def GSMC(input, p=None, Lmask=None, nrmode=None, radius=1, adapt=-1, rep=13, pla
     psuper = DitherLumaRebuild(pre_nr, s0=1, chroma=chromamv).mv.Super(pel=1, chroma=chromamv)
     difsuper = dif_nr.mv.Super(pel=1, levels=1, chroma=chromamv)
 
-    analyse_args = dict(blksize=blksize, chroma=chromamv, truemotion=False, _global=True, overlap=overlap)
+    analyse_args = dict(blksize=blksize, chroma=chromamv, truemotion=False, global_=True, overlap=overlap)
     fv1 = psuper.mv.Analyse(isb=False, delta=1, **analyse_args)
     bv1 = psuper.mv.Analyse(isb=True, delta=1, **analyse_args)
     if radius >= 2:
@@ -3129,7 +3129,7 @@ def MCTemporalDenoise(i, radius=None, pfMode=3, sigma=None, twopass=None, useTTm
     if refine:
         rMVS = p.mv.Super(levels=1, **super_args)
 
-    analyse_args = dict(blksize=blksize, search=search, searchparam=searchparam, pelsearch=pelsearch, chroma=chroma, truemotion=truemotion, _global=MVglobal, overlap=overlap, dct=DCT)
+    analyse_args = dict(blksize=blksize, search=search, searchparam=searchparam, pelsearch=pelsearch, chroma=chroma, truemotion=truemotion, global_=MVglobal, overlap=overlap, dct=DCT)
     recalculate_args = dict(thsad=thSAD // 2, blksize=max(blksize // 2, 4), search=search, chroma=chroma, truemotion=truemotion, overlap=max(overlap // 2, 2), dct=DCT)
     f1v = pMVS.mv.Analyse(isb=False, delta=1, **analyse_args)
     b1v = pMVS.mv.Analyse(isb=True, delta=1, **analyse_args)
@@ -3462,7 +3462,7 @@ def SMDegrain(input, tr=2, thSAD=300, thSADC=None, RefineMotion=False, contrasha
     # Motion vectors search
     global bv6, bv4, bv3, bv2, bv1, fv1, fv2, fv3, fv4, fv6
     super_args = dict(hpad=hpad, vpad=vpad, pel=pel)
-    analyse_args = dict(blksize=blksize, search=search, chroma=chroma, truemotion=truemotion, _global=MVglobal, overlap=overlap, dct=dct)
+    analyse_args = dict(blksize=blksize, search=search, chroma=chroma, truemotion=truemotion, global_=MVglobal, overlap=overlap, dct=dct)
     if RefineMotion:
         recalculate_args = dict(thsad=halfthSAD, blksize=halfblksize, search=search, chroma=chroma, truemotion=truemotion, overlap=halfoverlap, dct=dct)
 
@@ -5380,7 +5380,7 @@ def KNLMeansCL(clip, d=None, a=None, s=None, h=None, wmode=None, wref=None, devi
     if not isinstance(clip, vs.VideoNode):
         raise vs.Error('KNLMeansCL: This is not a clip')
 
-    if clip.format.color_family not in [vs.YUV, vs.YCOCG]:
+    if clip.format.color_family not in [vs.YUV]:
         raise vs.Error('KNLMeansCL: This wrapper is intended to be used only for YUV and YCoCg formats')
 
     if clip.format.subsampling_w > 0 or clip.format.subsampling_h > 0:
